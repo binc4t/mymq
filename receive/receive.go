@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -18,8 +19,8 @@ func main() {
 	ch, err := conn.Channel()
 	failOnError(err, "failed to create a channel")
 	q, err := ch.QueueDeclare(
-		"hello",
-		false,
+		"task_queue",
+		true,
 		false,
 		false,
 		false,
@@ -30,19 +31,29 @@ func main() {
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		true,
+		false,
 		false,
 		false,
 		false,
 		nil,
 	)
 	failOnError(err, "failed to register a consumer")
+	err = ch.Qos(1, 0, false)
+	failOnError(err, "failed to set qos")
 
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s\n", d.Body)
+			deal(d.Body)
+			err := d.Ack(false)
+			failOnError(err, "failed to ack message")
 		}
 	}()
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	<-make(chan struct{}, 0)
+}
+
+func deal(msg []byte) {
+	time.Sleep(5 * time.Second)
+	log.Printf("done with message: %s !!!\n", msg)
 }

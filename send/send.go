@@ -21,8 +21,8 @@ func main() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 	q, err := ch.QueueDeclare(
-		"hello",
-		false,
+		"task_queue",
+		true,
 		false,
 		false,
 		false,
@@ -39,8 +39,9 @@ func main() {
 		false,
 		false,
 		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(body),
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(body),
 		},
 	)
 	failOnError(err, "failed to publish a message")

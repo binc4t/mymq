@@ -1,10 +1,8 @@
 package main
 
 import (
-	"log"
-	"time"
-
 	amqp "github.com/rabbitmq/amqp091-go"
+	"log"
 )
 
 func failOnError(err error, msg string) {
@@ -18,34 +16,51 @@ func main() {
 	failOnError(err, "failed to connect to RammitMQ")
 	ch, err := conn.Channel()
 	failOnError(err, "failed to create a channel")
-	q, err := ch.QueueDeclare(
-		"task_queue",
+
+	err = ch.ExchangeDeclarePassive(
+		"logs",
+		amqp.ExchangeFanout,
 		true,
 		false,
 		false,
 		false,
 		nil,
 	)
+	failOnError(err, "Failed to declare an exchange")
+
+	q, err := ch.QueueDeclare(
+		"",
+		false,
+		false,
+		true,
+		false,
+		nil,
+	)
 	failOnError(err, "failed declare a queue")
+
+	err = ch.QueueBind(
+		q.Name,
+		"",
+		"logs",
+		false,
+		nil,
+	)
+	failOnError(err, "failed bind a queue")
 
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		false,
+		true,
 		false,
 		false,
 		false,
 		nil,
 	)
 	failOnError(err, "failed to register a consumer")
-	err = ch.Qos(1, 0, false)
-	failOnError(err, "failed to set qos")
 
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s\n", d.Body)
-			deal(d.Body)
-			err := d.Ack(false)
 			failOnError(err, "failed to ack message")
 		}
 	}()
@@ -53,7 +68,7 @@ func main() {
 	<-make(chan struct{}, 0)
 }
 
-func deal(msg []byte) {
-	time.Sleep(5 * time.Second)
-	log.Printf("done with message: %s !!!\n", msg)
-}
+//func deal(msg []byte) {
+//	time.Sleep(5 * time.Second)
+//	log.Printf("done with message: %s !!!\n", msg)
+//}

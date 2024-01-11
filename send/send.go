@@ -20,22 +20,25 @@ func main() {
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
-	q, err := ch.QueueDeclare(
-		"task_queue",
+
+	err = ch.ExchangeDeclare(
+		"logs",
+		amqp.ExchangeFanout,
 		true,
 		false,
 		false,
 		false,
 		nil,
 	)
-	failOnError(err, "Failed to declare a queue")
+	failOnError(err, "Failed to declare an exchange")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	body := "hello world"
 	err = ch.PublishWithContext(
 		ctx,
+		"logs",
 		"",
-		q.Name,
 		false,
 		false,
 		amqp.Publishing{

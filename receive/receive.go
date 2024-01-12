@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
+	"os"
 )
 
 func failOnError(err error, msg string) {
@@ -18,8 +20,8 @@ func main() {
 	failOnError(err, "failed to create a channel")
 
 	err = ch.ExchangeDeclarePassive(
-		"logs",
-		amqp.ExchangeFanout,
+		"logs_topic",
+		amqp.ExchangeTopic,
 		true,
 		false,
 		false,
@@ -38,14 +40,22 @@ func main() {
 	)
 	failOnError(err, "failed declare a queue")
 
-	err = ch.QueueBind(
-		q.Name,
-		"",
-		"logs",
-		false,
-		nil,
-	)
-	failOnError(err, "failed bind a queue")
+	if len(os.Args) < 2 {
+		log.Fatal("please type in [warn] [info] [error] ...")
+		return
+	}
+
+	for _, severity := range os.Args[1:] {
+		err = ch.QueueBind(
+			q.Name,
+			severity,
+			"logs_topic",
+			false,
+			nil,
+		)
+		failOnError(err, "failed bind a queue")
+		fmt.Printf("bind %s success\n", severity)
+	}
 
 	msgs, err := ch.Consume(
 		q.Name,
